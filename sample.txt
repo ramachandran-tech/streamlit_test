@@ -1,0 +1,678 @@
+# bronze.phoenix_sales - Raw Phoenix sales rows, as delivered.
+bronze.phoenix_sales:
+  columns:
+  - name: date_raw
+    type: string
+    nullable: true
+    bk: true
+    key_role: BK input
+    source_table: Phoenix Sales file, tab SalesByChannel_Bayer
+    source_column: Date (meaning - invoice, dispatch or order date - open as OD-16)
+    source_header: Date
+  - name: article_code_raw
+    type: string
+    nullable: true
+    bk: true
+    key_role: BK input
+    source_table: Phoenix Sales file, tab SalesByChannel_Bayer
+    source_column: ArtCode (Phoenix article code)
+    source_header: ArtCode
+  - name: pip_code_raw
+    type: string
+    nullable: true
+    bk: true
+    key_role: BK input
+    source_table: Phoenix Sales file, tab SalesByChannel_Bayer
+    source_column: Pipcode
+    source_header: Pipcode
+  - name: product_description_raw
+    type: string
+    nullable: true
+    source_table: Phoenix Sales file, tab SalesByChannel_Bayer
+    source_column: ProductDesc
+    source_header: ProductDesc
+  - name: ean_code_raw
+    type: string
+    nullable: true
+    source_table: Phoenix Sales file, tab SalesByChannel_Bayer
+    source_column: EAN
+    source_header: EAN
+  - name: location_number_raw
+    type: string
+    nullable: true
+    bk: true
+    key_role: BK input
+    source_table: Phoenix Sales file, tab SalesByChannel_Bayer
+    source_column: LocNo (the Phoenix depot that served the customer - OD-18)
+    source_header: LocNo
+  - name: location_name_raw
+    type: string
+    nullable: true
+    source_table: Phoenix Sales file, tab SalesByChannel_Bayer
+    source_column: LocName
+    source_header: LocName
+  - name: customer_channel_raw
+    type: string
+    nullable: true
+    source_table: Phoenix Sales file, tab SalesByChannel_Bayer
+    source_column: CustomerChannel
+    source_header: CustomerChannel
+  - name: customer_number_raw
+    type: string
+    nullable: true
+    bk: true
+    key_role: BK input
+    source_table: Phoenix Sales file, tab SalesByChannel_Bayer
+    source_column: CuNo
+    source_header: CuNo
+  - name: customer_name_raw
+    type: string
+    nullable: true
+    source_table: Phoenix Sales file, tab SalesByChannel_Bayer
+    source_column: CuName (PII candidate)
+    source_header: CuName
+  - name: customer_post_code_raw
+    type: string
+    nullable: true
+    source_table: Phoenix Sales file, tab SalesByChannel_Bayer
+    source_column: CuPCode (PII candidate)
+    source_header: CuPCode
+  - name: sales_qty_raw
+    type: string
+    nullable: true
+    source_table: Phoenix Sales file, tab SalesByChannel_Bayer
+    source_column: SalesQty
+    source_header: SalesQty
+  - name: sales_value_raw
+    type: string
+    nullable: true
+    source_table: Phoenix Sales file, tab SalesByChannel_Bayer
+    source_column: SalesValue (currency and VAT basis open as OD-15)
+    source_header: SalesValue
+  - name: source_file_version_id
+    type: string
+    nullable: false
+    supersede_scope: true
+    key_role: Supersede scope key
+    column_class: audit
+    source_table: Ingestion process (pipeline_core)
+    source_column: SHA-256 of the file content (first 32 hex characters)
+  - name: ingestion_id
+    type: string
+    nullable: false
+    column_class: audit
+    source_table: Ingestion process (pipeline_core)
+    source_column: Run identifier ({{job.run_id}} fallback), shared across bronze/silver/gold tasks
+  - name: source_system
+    type: string
+    nullable: false
+    column_class: audit
+    source_table: Ingestion process (pipeline_core)
+    source_column: PHOENIX
+  - name: source_entity
+    type: string
+    nullable: false
+    column_class: audit
+    source_table: Ingestion process (pipeline_core)
+    source_column: phoenix_sales
+  - name: source_file_name
+    type: string
+    nullable: false
+    column_class: audit
+    source_table: Ingestion process (pipeline_core)
+    source_column: Original delivered filename
+  - name: source_file_path
+    type: string
+    nullable: false
+    column_class: audit
+    source_table: Ingestion process (pipeline_core)
+    source_column: Landing path the file was read from
+  - name: file_received_ts
+    type: timestamp
+    nullable: false
+    column_class: audit
+    source_table: Ingestion process (pipeline_core)
+    source_column: File registration clock
+  - name: source_row_number
+    type: bigint
+    nullable: false
+    key_role: File-line identity component (with source_file_version_id)
+    column_class: audit
+    source_table: Ingestion process (pipeline_core)
+    source_column: Worksheet row number of the line
+  - name: schema_version
+    type: string
+    nullable: false
+    column_class: audit
+    source_table: Ingestion process (pipeline_core)
+    source_column: PHOENIX_SALES_V1 (the approved Phoenix layout), resolved from the
+      file's header row
+  - name: raw_record_hash
+    type: string
+    nullable: true
+    column_class: audit
+    source_table: Ingestion process (pipeline_core)
+    source_column: Hash of raw normalized values
+  - name: parse_status
+    type: string
+    nullable: false
+    column_class: audit
+    source_table: Ingestion process (pipeline_core)
+    source_column: Parse outcome per record
+  - name: parse_error_message
+    type: string
+    nullable: true
+    column_class: audit
+    source_table: Ingestion process (pipeline_core)
+    source_column: Parse failure detail
+  - name: load_ts
+    type: timestamp
+    nullable: false
+    column_class: audit
+    source_table: Ingestion process (pipeline_core)
+    source_column: Bronze write clock
+  - name: load_date
+    type: date
+    nullable: false
+    column_class: audit
+    source_table: Ingestion process (pipeline_core)
+    source_column: Bronze write date
+
+
+
+
+
+# gold.fact_phoenix_sales - Phoenix sales lines.
+gold.fact_phoenix_sales:
+  columns:
+  - name: phoenix_sales_key
+    type: string
+    nullable: false
+    pk: true
+    key_role: PK
+    source_table: silver.phoenix_sales
+    source_column: phoenix_sales_id
+  - name: business_date
+    type: date
+    nullable: false
+    bk: true
+    fk: gold.dim_date.calendar_date
+    key_role: BK component; FK -> gold.dim_date.calendar_date
+    source_table: silver.phoenix_sales
+    source_column: business_date
+  - name: product_key
+    type: string
+    nullable: false
+    fk: gold.dim_product.product_key
+    key_role: FK -> gold.dim_product.product_key (UNKNOWN-tolerant)
+    source_table: silver.phoenix_sales + gold.dim_product
+    source_column: product_ref_id -> the dim_product version valid on business_date
+  - name: account_key
+    type: string
+    nullable: false
+    fk: gold.dim_account.account_key
+    key_role: FK -> gold.dim_account.account_key (UNKNOWN-tolerant)
+    source_table: silver.phoenix_sales + gold.dim_account
+    source_column: account_ref_id -> the dim_account version valid on business_date
+  - name: stock_location_key
+    type: string
+    nullable: false
+    fk: gold.dim_stock_location.stock_location_key
+    key_role: FK -> gold.dim_stock_location.stock_location_key (role - the Phoenix depot; UNKNOWN-tolerant)
+    source_table: silver.phoenix_sales + gold.dim_stock_location
+    source_column: stock_location_ref_id -> the dim_stock_location version valid on business_date
+  - name: product_ref_id
+    type: string
+    nullable: true
+    key_role: Durable key (as-is reporting); NULL when unresolved
+    source_table: silver.phoenix_sales
+    source_column: product_ref_id
+  - name: account_ref_id
+    type: string
+    nullable: true
+    key_role: Durable key (as-is reporting); NULL when unresolved
+    source_table: silver.phoenix_sales
+    source_column: account_ref_id
+  - name: stock_location_ref_id
+    type: string
+    nullable: true
+    key_role: Durable key (as-is reporting); NULL when unresolved
+    source_table: silver.phoenix_sales
+    source_column: stock_location_ref_id
+  - name: location_number
+    type: string
+    nullable: true
+    bk: true
+    null_safe: true
+    key_role: BK component (null-safe)
+    source_table: silver.phoenix_sales
+    source_column: location_number
+  - name: customer_number
+    type: string
+    nullable: true
+    bk: true
+    null_safe: true
+    key_role: BK component (null-safe)
+    source_table: silver.phoenix_sales
+    source_column: customer_number
+  - name: article_code
+    type: string
+    nullable: true
+    bk: true
+    null_safe: true
+    key_role: BK component (null-safe)
+    source_table: silver.phoenix_sales
+    source_column: article_code
+  - name: pip_code
+    type: string
+    nullable: true
+    bk: true
+    null_safe: true
+    key_role: BK component (null-safe)
+    source_table: silver.phoenix_sales
+    source_column: pip_code_canonical
+  - name: ean_code
+    type: string
+    nullable: true
+    source_table: silver.phoenix_sales
+    source_column: ean_code
+  - name: line_occurrence
+    type: int
+    nullable: false
+    bk: true
+    key_role: BK component
+    source_table: silver.phoenix_sales
+    source_column: line_occurrence
+  - name: sales_qty
+    type: decimal(18,3)
+    nullable: false
+    source_table: silver.phoenix_sales
+    source_column: sales_qty
+  - name: sales_value
+    type: decimal(18,4)
+    nullable: true
+    source_table: silver.phoenix_sales
+    source_column: sales_value
+  - name: source_file_version_id
+    type: string
+    nullable: false
+    column_class: audit
+    source_table: silver.phoenix_sales
+    source_column: source_file_version_id
+  - name: source_file_name
+    type: string
+    nullable: false
+    column_class: audit
+    source_table: silver.phoenix_sales
+    source_column: source_file_name
+  - name: ingestion_id
+    type: string
+    nullable: false
+    column_class: audit
+    source_table: silver.phoenix_sales
+    source_column: ingestion_id
+  - name: reference_resolved_at
+    type: timestamp
+    nullable: false
+    key_role: Remap trigger
+    column_class: audit
+    source_table: silver.phoenix_sales
+    source_column: reference_resolved_at
+  - name: dq_status
+    type: string
+    nullable: false
+    column_class: audit
+    source_table: silver.phoenix_sales
+    source_column: dq_status
+  - name: created_at
+    type: timestamp
+    nullable: false
+    column_class: audit
+    source_table: Gold ETL process
+    source_column: Write clock
+  - name: updated_at
+    type: timestamp
+    nullable: false
+    column_class: audit
+    source_table: Gold ETL process
+    source_column: Write clock
+
+
+
+
+
+
+# silver.phoenix_sales - Cleaned and matched Phoenix sales lines.
+silver.phoenix_sales:
+  key_recipe:
+    name: PHOENIX_SALES_BK_V1  # the business key
+  columns:
+  - name: phoenix_sales_id
+    type: string
+    nullable: false
+    pk: true
+    key_role: PK
+    source_table: bronze.phoenix_sales
+    source_column: Business-key components + line_occurrence (SHA-256, key recipe PHOENIX_SALES_BK_V1;
+      NULL parts replaced by a fixed token)
+  - name: business_date
+    type: date
+    nullable: false
+    bk: true
+    key_role: BK component; supersede scope (a file replaces every date from its first to its last)
+    source_table: bronze.phoenix_sales
+    source_column: date_raw
+    transform: Parsed with the layout's date format (sources.yaml phoenix_sales.layouts),
+      plus ISO for typed Excel date cells
+  - name: product_ref_id
+    type: string
+    nullable: true
+    fk: silver.product_reference.product_ref_id
+    key_role: FK -> silver.product_reference.product_ref_id (durable)
+    source_table: bronze.phoenix_sales + silver.entity_reference_source
+    source_column: pip_code_canonical (primary, PIP_EXACT), article_code (secondary,
+      evidence PHOENIX_ARTICLE_CODE recorded by rule SAME_LINE_PIP)
+  - name: account_ref_id
+    type: string
+    nullable: true
+    fk: silver.account_reference.account_ref_id
+    key_role: FK -> silver.account_reference.account_ref_id (durable)
+    source_table: bronze.phoenix_sales + silver.entity_reference_source
+    source_column: customer_number -> evidence PHOENIX_CUSTOMER_NUMBER -> the Phoenix account
+      PHOENIX_CUSTOMER_NUMBER|<customer_number>
+  - name: stock_location_ref_id
+    type: string
+    nullable: true
+    fk: silver.stock_location_reference.stock_location_ref_id
+    key_role: FK -> silver.stock_location_reference.stock_location_ref_id (durable)
+    source_table: bronze.phoenix_sales + silver.entity_reference_source
+    source_column: location_number -> evidence PHOENIX_LOCATION_NUMBER -> the Phoenix location
+      PHOENIX_LOCATION_NUMBER|<location_number>
+  - name: location_number
+    type: string
+    nullable: true
+    bk: true
+    null_safe: true
+    key_role: BK component (null-safe)
+    source_table: bronze.phoenix_sales
+    source_column: location_number_raw (LocNo)
+  - name: location_name
+    type: string
+    nullable: true
+    source_table: bronze.phoenix_sales
+    source_column: location_name_raw (LocName)
+  - name: customer_number
+    type: string
+    nullable: true
+    bk: true
+    null_safe: true
+    key_role: BK component (null-safe)
+    source_table: bronze.phoenix_sales
+    source_column: customer_number_raw (CuNo)
+  - name: customer_name
+    type: string
+    nullable: true
+    source_table: bronze.phoenix_sales
+    source_column: customer_name_raw (CuName; PII candidate)
+  - name: customer_post_code
+    type: string
+    nullable: true
+    source_table: bronze.phoenix_sales
+    source_column: customer_post_code_raw (CuPCode; PII candidate)
+    transform: UK post code format standardised - upper case, one space before the
+      inward code; a value that is not a UK post code is kept as delivered, trimmed
+  - name: customer_channel
+    type: string
+    nullable: true
+    source_table: bronze.phoenix_sales
+    source_column: customer_channel_raw (as supplied by Phoenix; alignment with AAH channels
+      is OD-20)
+  - name: article_code
+    type: string
+    nullable: true
+    bk: true
+    null_safe: true
+    key_role: BK component (null-safe)
+    source_table: bronze.phoenix_sales
+    source_column: article_code_raw (ArtCode)
+  - name: product_description
+    type: string
+    nullable: true
+    source_table: bronze.phoenix_sales
+    source_column: product_description_raw (ProductDesc)
+  - name: pip_code
+    type: string
+    nullable: true
+    source_table: bronze.phoenix_sales
+    source_column: pip_code_raw (Pipcode, as supplied)
+  - name: pip_code_canonical
+    type: string
+    nullable: true
+    bk: true
+    null_safe: true
+    key_role: BK component (null-safe)
+    source_table: bronze.phoenix_sales
+    source_column: pip_code_raw
+    transform: 7 digits, left-padded with zeros, never truncated; NULL (and PX-08) when
+      the code is not a PIP
+  - name: ean_code
+    type: string
+    nullable: true
+    source_table: bronze.phoenix_sales
+    source_column: ean_code_raw (EAN)
+  - name: line_occurrence
+    type: int
+    nullable: false
+    bk: true
+    key_role: BK component
+    source_table: bronze.phoenix_sales
+    source_column: row_number() over (file version, business key) ordered by source_row_number
+  - name: sales_qty
+    type: decimal(18,3)
+    nullable: false
+    source_table: bronze.phoenix_sales
+    source_column: sales_qty_raw (SalesQty; negative = return or credit)
+  - name: sales_value
+    type: decimal(18,4)
+    nullable: true
+    source_table: bronze.phoenix_sales
+    source_column: sales_value_raw (SalesValue; currency and VAT basis open as OD-15)
+  - name: ingestion_id
+    type: string
+    nullable: false
+    column_class: audit
+    source_table: bronze.phoenix_sales
+    source_column: ingestion_id
+  - name: source_file_version_id
+    type: string
+    nullable: false
+    key_role: FK -> ops.file_registry
+    column_class: audit
+    source_table: bronze.phoenix_sales
+    source_column: source_file_version_id
+  - name: source_file_name
+    type: string
+    nullable: false
+    column_class: audit
+    source_table: bronze.phoenix_sales
+    source_column: source_file_name
+  - name: source_row_number
+    type: bigint
+    nullable: false
+    column_class: audit
+    source_table: bronze.phoenix_sales
+    source_column: source_row_number
+  - name: row_hash
+    type: string
+    nullable: false
+    key_role: Change detection
+    column_class: audit
+    source_table: bronze.phoenix_sales
+    source_column: Standardized business columns
+  - name: dq_status
+    type: string
+    nullable: false
+    column_class: audit
+    source_table: Silver ETL process
+    source_column: PASS / WARNING (lines a FAIL rule rejects stay in bronze, counted in
+      ops.dq_audit)
+  - name: dq_error_codes
+    type: array<string>
+    nullable: true
+    column_class: audit
+    source_table: Silver ETL process
+    source_column: Phoenix rule ids raised (PX-06 to PX-15)
+  - name: reference_resolved_at
+    type: timestamp
+    nullable: false
+    key_role: Remap trigger
+    column_class: audit
+    source_table: Silver ETL process
+    source_column: Reference resolution clock
+  - name: processed_at
+    type: timestamp
+    nullable: false
+    column_class: audit
+    source_table: Silver ETL process
+    source_column: Processing clock
+
+
+
+
+
+
+
+"""Phoenix sales: cleaning, row rules and coverage."""
+from __future__ import annotations
+
+from typing import Callable, Mapping, Sequence
+
+from pyspark.sql import Column, DataFrame
+from pyspark.sql import functions as F
+
+from ..config.models import PlatformConfig, SourceSpec, TableSpec
+from . import cleaning, row_rules
+from .row_rules import REJECT_CODES, rejected     # noqa: F401  (the loader reads them here)
+from .supersede import date_span
+
+ENTITY = "phoenix_sales"
+
+# PX-05 needs to know a value was delivered at all, which typing throws away
+_VALUE_SUPPLIED = "_sales_value_supplied"
+
+# Built lazily: a Column can only be created once a Spark session exists.
+FAIL_RULES: Mapping[str, Callable[[], Column]] = {
+    "PX-02_DATE_INVALID": lambda: F.col("business_date").isNull(),
+    "PX-04_SALES_QTY_INVALID": lambda: F.col("sales_qty").isNull(),
+    "PX-05_SALES_VALUE_NOT_NUMERIC": lambda: (
+        F.col(_VALUE_SUPPLIED) & F.col("sales_value").isNull()),
+    "PX-07_NO_PRODUCT_IDENTIFIER": lambda: (
+        F.col("pip_code").isNull() & F.col("article_code").isNull()),
+}
+
+ARTICLE_CODE_CONFLICT = "PX-14_ARTICLE_CODE_CONFLICT"
+LINES_RECONCILIATION = "PX-16_LINES_DELIVERED_VS_ACCOUNTED"
+CHANNEL_UNLISTED = "PX-15_CUSTOMER_CHANNEL_UNLISTED"
+
+
+def clean(bronze: DataFrame, spec: TableSpec, source: SourceSpec,
+          cfg: PlatformConfig) -> DataFrame:
+    """Bronze rows -> typed silver columns (keys and audit columns come later)."""
+    supplied = F.nullif(F.trim(F.col("sales_value_raw")), F.lit("")).isNotNull()
+    return cleaning.map_clean_columns(
+        bronze.withColumn(_VALUE_SUPPLIED, supplied), spec, cfg,
+        overrides={
+            "business_date": cleaning.layout_date(F.col("date_raw"), source, cfg),
+            "pip_code_canonical": cleaning.canonical_pip(F.col("pip_code_raw")),
+            "customer_post_code": cleaning.uk_post_code(
+                F.col("customer_post_code_raw")),
+        },
+        keep=[_VALUE_SUPPLIED])
+
+
+def tag_rejects(df: DataFrame) -> DataFrame:
+    """Add the ids of the FAIL rules each row breaks (empty array = clean)."""
+    return row_rules.tag_rejects(df, FAIL_RULES)
+
+
+def accepted(tagged: DataFrame) -> DataFrame:
+    return row_rules.accepted(tagged).drop(_VALUE_SUPPLIED)
+
+
+def flag_warnings(df: DataFrame,
+                  accepted_channels: Sequence[str] = ()) -> DataFrame:
+    """Add the WARN rules once the line has its key (PX-13 reads line_occurrence)."""
+    qty, value = F.col("sales_qty"), F.col("sales_value")
+    rules: dict[str, Column] = {
+        "PX-06_SALES_VALUE_MISSING": value.isNull(),
+        "PX-08_PIP_NOT_CANONICAL": (F.col("pip_code").isNotNull()
+                                    & F.col("pip_code_canonical").isNull()),
+        "PX-09_CUSTOMER_NUMBER_MISSING": F.col("customer_number").isNull(),
+        "PX-10_LOCATION_NUMBER_MISSING": F.col("location_number").isNull(),
+        "PX-11_NEGATIVE_QTY": qty < 0,
+        "PX-12_QTY_VALUE_SIGN_MISMATCH": (((qty < 0) & (value > 0))
+                                          | ((qty > 0) & (value < 0))),
+        "PX-13_REPEATED_LINE": F.col("line_occurrence") > 1,
+    }
+    if accepted_channels:
+        channel = F.col("customer_channel")
+        rules[CHANNEL_UNLISTED] = (channel.isNotNull()
+                                   & ~channel.isin(*accepted_channels))
+    return row_rules.flag(df, rules)
+
+
+def coverage(tagged: DataFrame) -> list:
+    """The business dates a file replaces."""
+    first, last = tagged.agg(F.min("business_date"),
+                             F.max("business_date")).collect()[0]
+    return date_span(first, last) if first is not None else []
+
+
+
+
+
+"""Row rules for the sales feeds, in the platform's dq vocabulary."""
+from __future__ import annotations
+
+from typing import Callable, Mapping
+
+from pyspark.sql import Column, DataFrame
+from pyspark.sql import functions as F
+
+# column holding the ids of the FAIL rules a line breaks (empty = clean)
+REJECT_CODES = "_reject_codes"
+
+
+def tag_rejects(df: DataFrame,
+                rules: Mapping[str, Callable[[], Column]]) -> DataFrame:
+    """Add the ids of the FAIL rules each row breaks."""
+    codes = F.array_compact(F.array(*[
+        F.when(rule(), F.lit(rule_id)) for rule_id, rule in rules.items()]))
+    return df.withColumn(REJECT_CODES, codes)
+
+
+def accepted(tagged: DataFrame) -> DataFrame:
+    return tagged.where(F.size(REJECT_CODES) == 0).drop(REJECT_CODES)
+
+
+def rejected(tagged: DataFrame) -> DataFrame:
+    return tagged.where(F.size(REJECT_CODES) > 0)
+
+
+def flag(df: DataFrame, rules: Mapping[str, Column]) -> DataFrame:
+    """Add WARN rules on top of whatever dq the keys step already set."""
+    no_codes = F.array().cast("array<string>")
+    for rule_id, condition in rules.items():
+        hit = F.coalesce(condition, F.lit(False))
+        df = (df
+              .withColumn("dq_error_codes", F.when(hit, F.array_union(
+                  F.coalesce(F.col("dq_error_codes"), no_codes),
+                  F.array(F.lit(rule_id)))).otherwise(F.col("dq_error_codes")))
+              .withColumn("dq_status", F.when(hit, F.lit("WARNING"))
+                          .otherwise(F.col("dq_status"))))
+    return df
+
+
+
+
+
